@@ -63,7 +63,7 @@ func playEpisode(episode int, learningRate, discountFactor float64) {
 			agent = agentO
 		}
 
-		agent.Action = selectAction(src.Board, agent)
+		agent.Action = src.Pos{X: rand.Intn(3), Y: rand.Intn(3)}
 
 		updatedQ := q(isX, agent.Action) + learningRate*(discountFactor*maxQ(src.Board, agent)-q(isX, agent.Action))
 		updateAgentQTable(agent, src.Board, agent.Action, updatedQ)
@@ -97,14 +97,11 @@ func updateAgentQTable(agent *Agent, board [3][3]rune, pos src.Pos, updatedQ flo
 
 func selectAction(board [3][3]rune, agent *Agent) src.Pos {
 	// Select the action with the highest Q-value for the current state
-	maxQ := -1000.0
 	var bestAction src.Pos
-	for pos, qValue := range agent.QTable[board] {
-		if qValue > maxQ {
-			maxQ = qValue
-			bestAction = pos
-		}
+	for pos := range agent.QTable[board] {
+		bestAction = pos
 	}
+
 	return bestAction
 }
 
@@ -112,7 +109,7 @@ func q(isX bool, action src.Pos) float64 {
 	row, col := action.X, action.Y
 
 	if src.IsDuplicate(row, col) {
-		row, col = rand.Intn(3), rand.Intn(3)
+		return -10.0
 	}
 
 	src.MapUpdating(row, col, isX)

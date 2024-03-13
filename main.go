@@ -43,5 +43,7 @@ func main() {
 		}
 
 		isX = !isX
+
+		fmt.Println("***************")
 	}
 }
