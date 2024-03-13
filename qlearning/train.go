@@ -11,155 +11,127 @@ import (
 
 var (
 	agentX = &Agent{
-		QTable: make(map[[3][3]rune]map[src.Pos][]float64),
+		QTable: make(map[[3][3]rune]map[src.Pos]float64),
 	}
 
 	agentO = &Agent{
-		QTable: make(map[[3][3]rune]map[src.Pos][]float64),
+		QTable: make(map[[3][3]rune]map[src.Pos]float64),
 	}
 )
 
 type Agent struct {
-	QTable map[[3][3]rune]map[src.Pos][]float64
+	QTable map[[3][3]rune]map[src.Pos]float64
 	Action src.Pos
 }
 
-// Q(s, a) = Q(s, a) + α * [r + γ * maxQ(s', a') - Q(s, a)]
 func main() {
-	agentXActionRecording := make(map[string]src.Pos)
-	agentOActionRecording := make(map[string]src.Pos)
-
-	qXScoreRecord := make(map[src.Pos][]float64)
-	qOScoreRecord := make(map[src.Pos][]float64)
-
 	const learningRate = 0.1
 	const discountFactor = 0.9
+	const numEpisodes = 1000
 
-	for i := range 1000 {
-		var pos src.Pos
-		if i == 0 {
-			pos = src.Pos{X: 0, Y: 0}
-		} else {
-			pos = src.Pos{X: rand.Intn(3), Y: rand.Intn(3)}
-		}
-
-		var isX bool
-		if i%2 == 0 {
-			isX = true
-		} else {
-			isX = false
-		}
-
-		var updatedQ float64
-		if i == 0 {
-			updatedQ = q(isX, pos)
-		} else {
-			updatedQ = q(isX, pos) + learningRate*(discountFactor*maxQ(isX, pos)-q(isX, pos))
-		}
-
-		if isX {
-			if agentX.QTable[src.Board] == nil {
-				agentX.QTable[src.Board] = make(map[src.Pos][]float64)
-				agentX.QTable[src.Board][pos] = make([]float64, 0)
-			}
-
-			qXScoreRecord[pos] = append(qXScoreRecord[pos], updatedQ)
-			agentX.QTable[src.Board][pos] = qXScoreRecord[pos]
-
-			agentXActionRecording[runeToStringConverting(src.Board)] = pos
-		} else {
-			if agentO.QTable[src.Board] == nil {
-				agentO.QTable[src.Board] = make(map[src.Pos][]float64)
-				agentO.QTable[src.Board][pos] = make([]float64, 0)
-			}
-
-			qOScoreRecord[pos] = append(qOScoreRecord[pos], updatedQ)
-			agentO.QTable[src.Board][pos] = qOScoreRecord[pos]
-
-			agentOActionRecording[runeToStringConverting(src.Board)] = pos
-		}
+	for episode := range numEpisodes {
+		playEpisode(episode, learningRate, discountFactor)
 	}
 
-	agentOResult, _ := json.MarshalIndent(agentOActionRecording, "", "\t")
+	agentOResult := make(map[string]src.Pos)
+	for k := range agentO.QTable {
+		agentOResult[convertBoardToKey(k)] = selectAction(k, agentO)
+	}
 
-	os.WriteFile("agentOQTable.json", agentOResult, 0777)
+	agentOResultJSON, _ := json.MarshalIndent(agentOResult, "", "\t")
+	os.WriteFile("agentOQTable.json", agentOResultJSON, 0777)
 }
 
-func maxQ(isX bool, s src.Pos) float64 {
-	var max float64
-
-	if isX {
-		for _, v := range agentX.QTable[src.Board][s] {
-			if v > max {
-				max = v
-			}
+func convertBoardToKey(board [3][3]rune) string {
+	key := ""
+	for _, row := range board {
+		for _, cell := range row {
+			key += string(cell)
 		}
-	} else {
-		for _, v := range agentO.QTable[src.Board][s] {
-			if v > max {
-				max = v
-			}
+	}
+	return key
+}
+
+func playEpisode(episode int, learningRate, discountFactor float64) {
+	isX := episode%2 == 0
+
+	for !src.IsGameOver {
+		var agent *Agent
+		if isX {
+			agent = agentX
+		} else {
+			agent = agentO
+		}
+
+		agent.Action = selectAction(src.Board, agent)
+
+		updatedQ := q(isX, agent.Action) + learningRate*(discountFactor*maxQ(src.Board, agent)-q(isX, agent.Action))
+		updateAgentQTable(agent, src.Board, agent.Action, updatedQ)
+
+		fmt.Println("Episode:", episode)
+
+		src.IsGameOver = src.IsEnd('x') || src.IsEnd('o') || src.IsDraw()
+
+		isX = !isX // Switch player turn
+	}
+}
+
+func maxQ(board [3][3]rune, agent *Agent) float64 {
+	max := -1000.0
+
+	for _, v := range agent.QTable[board] {
+		if v > max {
+			max = v
 		}
 	}
 
 	return max
 }
 
+func updateAgentQTable(agent *Agent, board [3][3]rune, pos src.Pos, updatedQ float64) {
+	if agent.QTable[board] == nil {
+		agent.QTable[board] = make(map[src.Pos]float64)
+	}
+	agent.QTable[board][pos] = updatedQ
+}
+
+func selectAction(board [3][3]rune, agent *Agent) src.Pos {
+	// Select the action with the highest Q-value for the current state
+	maxQ := -1000.0
+	var bestAction src.Pos
+	for pos, qValue := range agent.QTable[board] {
+		if qValue > maxQ {
+			maxQ = qValue
+			bestAction = pos
+		}
+	}
+	return bestAction
+}
+
 func q(isX bool, action src.Pos) float64 {
 	row, col := action.X, action.Y
 
+	if src.IsDuplicate(row, col) {
+		row, col = rand.Intn(3), rand.Intn(3)
+	}
+
+	src.MapUpdating(row, col, isX)
 	src.MapDrawing()
-	fmt.Println("*****")
 
-	for {
-		if src.IsDuplicate(row, col) {
-			return 0
-		}
-
-		src.MapUpdating(row, col)
-		src.MapDrawing()
-
-		xTurn := src.IsYourTurn()
-
+	if src.IsEnd('x') {
 		if isX {
-			if xTurn {
-				if src.IsEnd('x') {
-					return 1.0
-				}
-			} else {
-				if src.IsEnd('o') {
-					return -2.0
-				}
-			}
+			return 1.0 // Player X wins
 		} else {
-			if xTurn {
-				if src.IsEnd('x') {
-					return -2.0
-				}
-			} else {
-				if src.IsEnd('o') {
-					return 1.0
-				}
-			}
+			return -1.0 // Player O loses
 		}
-
-		if src.IsDraw() {
-			return 1.0
-		}
-
-		src.TurnChaning()
-		fmt.Println("*****")
 	}
-}
-
-func runeToStringConverting(s [3][3]rune) string {
-	var result string
-
-	for i := range 3 {
-		for j := range 3 {
-			result += string(s[i][j])
+	if src.IsEnd('o') {
+		if isX {
+			return -1.0 // Player X loses
+		} else {
+			return 1.0 // Player O wins
 		}
 	}
 
-	return result
+	return 0 // Game continues
 }

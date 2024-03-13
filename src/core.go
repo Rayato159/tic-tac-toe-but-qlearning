@@ -18,14 +18,13 @@ var (
 		{'-', '-', '-'},
 		{'-', '-', '-'},
 	}
-
-	yourTurn = true
+	IsGameOver = false
 
 	agent = make(map[[3][3]rune]Pos)
 )
 
-func Input(row, col int) (int, int) {
-	if yourTurn {
+func Input(row, col int, isX bool) (int, int) {
+	if isX {
 		return row, col
 	}
 
@@ -56,8 +55,8 @@ func LoadAgent() {
 	}
 }
 
-func MapUpdating(i, j int) {
-	if yourTurn {
+func MapUpdating(i, j int, isX bool) {
+	if isX {
 		Board[i][j] = 'x'
 	} else {
 		Board[i][j] = 'o'
@@ -78,41 +77,57 @@ func IsDuplicate(i, j int) bool {
 }
 
 func IsDraw() bool {
-	return (Board[0][0] != Board[0][2] &&
+	isDraw := (Board[0][0] != Board[0][2] &&
 		Board[2][0] != Board[2][2]) &&
 		(Board[0][0] != '-' &&
 			Board[0][2] != '-' &&
 			Board[2][0] != '-' &&
 			Board[2][2] != '-')
-}
 
-func TurnChaning() {
-	yourTurn = !yourTurn
+	if isDraw {
+		Board = [3][3]rune{
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+		}
 
-	if yourTurn {
-		fmt.Println("### Your Turn ###")
-	} else {
-		fmt.Println("### Agent Turn ###")
+		return true
 	}
-}
 
-func IsYourTurn() bool {
-	return yourTurn
+	return false
 }
 
 func IsEnd(marker rune) bool {
 	// row win
 	if count := rowWining(marker); count == 3 {
+		Board = [3][3]rune{
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+		}
+
 		return true
 	}
 
 	// column win
 	if count := columnWinning(marker); count == 3 {
+		Board = [3][3]rune{
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+		}
+
 		return true
 	}
 
 	// diagonal win
 	if count := diagonalWinning(marker); count == 3 {
+		Board = [3][3]rune{
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+			{'-', '-', '-'},
+		}
+
 		return true
 	}
 

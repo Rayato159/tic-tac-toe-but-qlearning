@@ -14,4 +14,3 @@ Enter a position of (x, y) between [(0, 2), (0, 2)]
 
 ```bash
 go run ./qlearning/train.go
-```

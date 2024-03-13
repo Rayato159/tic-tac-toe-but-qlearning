@@ -12,14 +12,14 @@ type Pos struct {
 }
 
 func main() {
+	isX := true
 	var row, col int
 	src.LoadAgent()
 
 	fmt.Println("Start Tic Tac Toe Game!")
-	fmt.Println("### Your Turn ###")
 
 	for {
-		if src.IsYourTurn() {
+		if isX {
 			fmt.Scan(&row, &col)
 
 			if row < 0 || row > 2 || col < 0 || col > 2 {
@@ -27,33 +27,21 @@ func main() {
 				continue
 			}
 		}
-		row, col := src.Input(row, col)
+		row, col := src.Input(row, col, isX)
 
-		if src.IsDuplicate(row, col) {
+		for src.IsDuplicate(row, col) {
 			fmt.Println("Duplicate!")
 			continue
 		}
 
-		src.MapUpdating(row, col)
+		src.MapUpdating(row, col, isX)
 		src.MapDrawing()
 
-		if src.IsYourTurn() {
-			if src.IsEnd('x') {
-				fmt.Println("You Win!")
-				break
-			}
-		} else {
-			if src.IsEnd('o') {
-				fmt.Println("You Lose!")
-				break
-			}
-		}
-
-		if src.IsDraw() {
-			fmt.Println("Draw!")
+		src.IsGameOver = src.IsEnd('x') || src.IsEnd('o') || src.IsDraw()
+		if src.IsGameOver {
 			break
 		}
 
-		src.TurnChaning()
+		isX = !isX
 	}
 }
