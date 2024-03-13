@@ -27,7 +27,7 @@ type Agent struct {
 func main() {
 	const learningRate = 0.1
 	const discountFactor = 0.9
-	const numEpisodes = 1000
+	const numEpisodes = 10000
 
 	for episode := range numEpisodes {
 		playEpisode(episode, learningRate, discountFactor)
@@ -63,16 +63,24 @@ func playEpisode(episode int, learningRate, discountFactor float64) {
 			agent = agentO
 		}
 
-		agent.Action = src.Pos{X: rand.Intn(3), Y: rand.Intn(3)}
+		// Select the best action based on the Q-values
+		pos := selectAction(src.Board, agent)
 
-		updatedQ := q(isX, agent.Action) + learningRate*(discountFactor*maxQ(src.Board, agent)-q(isX, agent.Action))
-		updateAgentQTable(agent, src.Board, agent.Action, updatedQ)
+		// Calculate the new Q-value
+		updatedQ := q(isX, pos) + learningRate*(discountFactor*maxQ(src.Board, agent)-q(isX, pos))
 
-		fmt.Println("Episode:", episode)
+		// Update the Q-table with the new Q-value
+		updateAgentQTable(agent, src.Board, pos, updatedQ)
 
+		// Update the game state
+		src.MapUpdating(pos.X, pos.Y, isX)
+
+		// Check if the game is over
 		src.IsGameOver = src.IsEnd('x') || src.IsEnd('o') || src.IsDraw()
 
-		isX = !isX // Switch player turn
+		// Switch player turn
+		isX = !isX
+		fmt.Println("***************")
 	}
 }
 
@@ -98,8 +106,18 @@ func updateAgentQTable(agent *Agent, board [3][3]rune, pos src.Pos, updatedQ flo
 func selectAction(board [3][3]rune, agent *Agent) src.Pos {
 	// Select the action with the highest Q-value for the current state
 	var bestAction src.Pos
-	for pos := range agent.QTable[board] {
-		bestAction = pos
+	maxQ := -1000.0
+	for pos, qValue := range agent.QTable[board] {
+		// Check if the position is not already taken
+		if board[pos.X][pos.Y] == '-' && qValue > maxQ {
+			maxQ = qValue
+			bestAction = pos
+		}
+	}
+
+	// If no valid action is found, select a random valid action
+	if maxQ == -1000.0 {
+		bestAction = src.Pos{X: rand.Intn(3), Y: rand.Intn(3)}
 	}
 
 	return bestAction
